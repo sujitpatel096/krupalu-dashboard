@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reports - Krupalu Creation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Calibri, Arial, sans-serif; background: #E8EDF3; color: #1E2A44; }
+  .layout { display: flex; min-height: 100vh; }
+
+  .sidebar { width: 170px; background: #1E2A44; padding: 24px 12px; position: relative; }
+  body.sidebar-collapsed .sidebar { display: none; }
+  #sidebarCollapseBtn { position:absolute; top:10px; right:8px; background:none; border:none; color:#8FA3C0; cursor:pointer; font-size:14px; }
+  #sidebarReopenBtn { display:none; position:fixed; top:16px; left:16px; z-index:999; background:#1E2A44; color:#FFFFFF; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:15px; }
+  body.sidebar-collapsed #sidebarReopenBtn { display:block; }
+  body.sidebar-collapsed .main { padding-left: 64px; }
+  body.sidebar-collapsed #calcBtnWrap { display: none; }
+  body.sidebar-collapsed #calBtnWrap { display: none; }
+  .sidebar h2 { color: #FFFFFF; font-size: 16px; margin-bottom: 20px; }
+  .sidebar a {
+    display: block; padding: 10px 12px; margin-bottom: 4px;
+    border-radius: 6px; color: #AEB9C9; text-decoration: none; font-size: 14px;
+  }
+  .sidebar a.active { background: #3B6EA5; color: #FFFFFF; }
+
+  .main { flex: 1; padding: 24px 32px; }
+
+  #dash { background: #F3F6FA; border: 1px solid #D3DBE5; border-radius: 12px; padding: 20px 24px; overflow-x: hidden; }
+  #dash.pseudo-fullscreen {
+    position: fixed; inset: 0; width: auto; height: auto;
+    z-index: 999999; border-radius: 0; overflow-y: auto; margin: 0;
+    background: #F3F6FA;
+  }
+  body.reports-fullscreen-active .sidebar,
+  body.reports-fullscreen-active #sidebarReopenBtn,
+  body.reports-fullscreen-active #calBtnWrap,
+  body.reports-fullscreen-active #calcBtnWrap,
+  body.reports-fullscreen-active #calPanel,
+  body.reports-fullscreen-active #calcPanel {
+    display: none !important;
+  }
+  body.reports-fullscreen-active { overflow: hidden; }
+
+  .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .dash-title { font-size: 20px; font-weight: 600; }
+  #fsBtn { height: 34px; border-radius: 6px; border: 1px solid #D3DBE5; background: #FFFFFF; font-size: 13px; padding: 0 12px; cursor: pointer; }
+
+  .filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .filters select { height: 34px; border-radius: 6px; border: 1px solid #D3DBE5; font-size: 13px; padding: 0 8px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .kpi { background: #FFFFFF; border-radius: 8px; padding: 12px 14px; }
+  .kpi p.label { font-size: 12px; color: #5B6B7F; margin-bottom: 2px; }
+  .kpi p.value { font-size: 20px; font-weight: 600; }
+
+  .charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+  .chart-card p.title { font-size: 13px; color: #5B6B7F; margin-bottom: 6px; }
+  .chart-wrap { position: relative; height: 170px; }
+
+  .summary-box { background: #FFFFFF; border-radius: 8px; padding: 14px 18px; }
+  .summary-box p.title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .summary-box ul { padding-left: 18px; font-size: 13px; color: #3E4C63; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <button id="sidebarReopenBtn" title="Show menu">☰</button>
+
+  <div class="sidebar">
+    <button id="sidebarCollapseBtn" title="Hide menu">⟨⟨</button>
+    <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; width:100%;">
+      <img src="/static/swaminarayan_symbol.png" alt="" style="width:20px; height:26px; flex-shrink:0;">
+      <span style="font-size:14px; color:#eda100; font-weight:600; text-align:center;">જય સ્વામિનારાયણ</span>
+      <img src="/static/swaminarayan_symbol.png" alt="" style="width:20px; height:26px; flex-shrink:0;">
+    </div>
+    <div class="logo-box" style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px;">
+      <img src="/static/logo.png" alt="Krupalu Creation logo" style="width:60px;height:60px;margin-bottom:10px;">
+      <h2 style="margin:0;">Krupalu Creation</h2>
+      <p style="font-size:10.5px;color:#8FA3C0;letter-spacing:0.5px;text-transform:uppercase;margin-top:2px;">Digital Printing</p>
+    </div>
+    <a href="/">Dashboard</a>
+    <a href="/new-work">Orders</a>
+    <a href="/deliveries">Deliveries</a>
+    <a href="/payments">Payments</a>
+    <a href="/parties">Parties</a>
+    <a href="/balance-sheet">Balance sheet</a>
+    <a href="/change-log">Change log</a>
+    <a href="/reports" class="active">Reports</a>
+  <div id="calBtnWrap" style="position:fixed; bottom:56px; left:12px; width:146px; z-index:500;">
+      <button id="calToggleBtn" style="width:100%; height:34px; border-radius:6px; border:none; background:#2a3f5f; color:#AEB9C9; font-size:12px; cursor:pointer;">📅 Calendar</button>
+    </div>
+    <div id="calcBtnWrap" style="position:fixed; bottom:16px; left:12px; width:146px; z-index:500;">
+      <button id="calcToggleBtn" style="width:100%; height:34px; border-radius:6px; border:none; background:#2a3f5f; color:#AEB9C9; font-size:12px; cursor:pointer;">🧮 Calculator</button>
+    </div>
+
+    <div id="calPanel" style="display:none; position:fixed; bottom:96px; left:12px; width:230px; background:#FFFFFF; border:1px solid #D3DBE5; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,0.2); z-index:1000; padding:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span id="calMonthLabel" style="font-size:13px; font-weight:600; color:#1E2A44;"></span>
+        <span id="calCloseBtn" style="cursor:pointer; font-size:16px; color:#5B6B7F;">×</span>
+      </div>
+      <div id="calGrid" style="display:grid; grid-template-columns:repeat(7,1fr); gap:3px; font-size:11px; text-align:center;"></div>
+    </div>
+  </div>
+
+  <div id="calcPanel" style="display:none; position:fixed; top:100px; left:100px; width:230px; background:#FFFFFF; border:1px solid #D3DBE5; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,0.2); z-index:1000;">
+    <div id="calcHeader" style="cursor:move; background:#1E2A44; color:#FFFFFF; padding:8px 12px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+      <span>Calculator</span>
+      <span id="calcCloseBtn" style="cursor:pointer; font-size:16px; line-height:1;">×</span>
+    </div>
+    <div style="padding:10px;">
+      <input id="calcDisplay" readonly style="width:100%; padding:8px; margin-bottom:8px; font-size:16px; text-align:right; border:1px solid #D3DBE5; border-radius:6px;">
+      <div id="calcButtons" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="dash">
+      <div class="dash-header">
+        <div class="dash-title">Krupalu Creation Reports</div>
+        <button id="fsBtn">Fullscreen</button>
+      </div>
+
+      <div class="filters">
+        <select id="fParty"></select>
+        <select id="fFabric"></select>
+        <select id="fWidth"></select>
+        <select id="fRange">
+          <option value="3">Last 3 months</option>
+          <option value="6">Last 6 months</option>
+          <option value="12" selected>Last 12 months</option>
+          <option value="all">Since first entry</option>
+        </select>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><p class="label">Total given</p><p class="value" id="kpiGiven">-</p></div>
+        <div class="kpi"><p class="label">Total delivered</p><p class="value" id="kpiDelivered">-</p></div>
+        <div class="kpi"><p class="label">Shortage</p><p class="value" id="kpiShortage">-</p></div>
+        <div class="kpi"><p class="label">Pending payment</p><p class="value" id="kpiPending">-</p></div>
+      </div>
+
+      <div class="charts">
+        <div class="chart-card">
+          <p class="title">A. Monthly given vs delivered</p>
+          <div class="chart-wrap"><canvas id="chartTrend"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <p class="title">B. Fabric split</p>
+          <div class="chart-wrap"><canvas id="chartFabric"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <p class="title">C. Payment status</p>
+          <div class="chart-wrap"><canvas id="chartStatus"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <p class="title">D. Top parties</p>
+          <div class="chart-wrap"><canvas id="chartParties"></canvas></div>
+        </div>
+      </div>
+
+      <div class="summary-box">
+        <p class="title">Executive summary</p>
+        <ul id="execSummary"></ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let charts = {};
+function makeChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+function fillSelect(id, values, label) {
+  const el = document.getElementById(id);
+  el.innerHTML = '<option value="all">All ' + label + '</option>' +
+    values.map(v => '<option value="' + v + '">' + v + '</option>').join('');
+}
+
+async function loadFilters() {
+  const res = await fetch('/api/reports-filters');
+  const data = await res.json();
+  fillSelect('fParty', data.parties, 'parties');
+  fillSelect('fFabric', data.fabrics, 'fabrics');
+  document.getElementById('fWidth').innerHTML =
+    '<option value="all">All sizes</option>' +
+    data.widths.map(w => '<option value="' + w + '">' + w + '"</option>').join('');
+}
+
+async function render() {
+  const party = document.getElementById('fParty').value;
+  const fabric = document.getElementById('fFabric').value;
+  const width = document.getElementById('fWidth').value;
+  const range = document.getElementById('fRange').value;
+
+  const params = new URLSearchParams({ party, fabric, width, range });
+  const res = await fetch('/api/reports-data?' + params.toString());
+  const data = await res.json();
+
+  document.getElementById('kpiGiven').textContent = data.kpis.given.toLocaleString() + ' m';
+  document.getElementById('kpiDelivered').textContent = data.kpis.delivered.toLocaleString() + ' m';
+  document.getElementById('kpiShortage').textContent = data.kpis.shortage.toLocaleString() + ' m';
+  document.getElementById('kpiPending').textContent = 'Rs ' + data.kpis.pending.toLocaleString();
+
+  makeChart('chartTrend', {
+    type: 'line',
+    data: {
+      labels: data.months,
+      datasets: [
+        { label: 'Given', data: data.given_by_month, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.15)', fill: true, tension: 0.35 },
+        { label: 'Delivered', data: data.delivered_by_month, borderColor: '#1baf7a', backgroundColor: 'rgba(27,175,122,0.15)', fill: true, tension: 0.35 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } } }
+  });
+
+  makeChart('chartFabric', {
+    type: 'doughnut',
+    data: {
+      labels: data.fabric_labels,
+      datasets: [{ data: data.fabric_values, backgroundColor: ['#2a78d6', '#1baf7a', '#eda100', '#4a3aa7', '#e34948', '#3e8e8e'] }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } } }
+  });
+
+  makeChart('chartStatus', {
+    type: 'bar',
+    data: {
+      labels: data.status_labels,
+      datasets: [{ data: data.status_values, backgroundColor: ['#1baf7a', '#eda100', '#e34948'] }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+
+  makeChart('chartParties', {
+    type: 'bar',
+    data: {
+      labels: data.party_labels,
+      datasets: [{ data: data.party_values, backgroundColor: '#2a78d6' }]
+    },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+
+  const summary = [];
+  summary.push(`<b>Volume (A):</b> ${data.kpis.given.toLocaleString()} m given, ${data.kpis.delivered.toLocaleString()} m delivered (${data.kpis.shortage.toLocaleString()} m shortage).`);
+  summary.push(`<b>Finances (C):</b> Rs ${data.kpis.pending.toLocaleString()} payment pending.`);
+  if (data.fabric_labels.length) {
+    const maxIdx = data.fabric_values.indexOf(Math.max(...data.fabric_values));
+    summary.push(`<b>Fabrics (B):</b> ${data.fabric_labels[maxIdx]} has the largest share at ${data.fabric_values[maxIdx].toLocaleString()} m.`);
+  }
+  if (data.party_labels.length) {
+    const maxIdx = data.party_values.indexOf(Math.max(...data.party_values));
+    summary.push(`<b>Top parties (D):</b> ${data.party_labels[maxIdx]} leads with ${data.party_values[maxIdx].toLocaleString()} m given.`);
+  }
+  if (data.months.length) {
+    const peakIdx = data.given_by_month.indexOf(Math.max(...data.given_by_month));
+    const lowIdx = data.given_by_month.indexOf(Math.min(...data.given_by_month));
+    summary.push(`<b>Trend (A):</b> Supply peaked in ${data.months[peakIdx]}, was lowest in ${data.months[lowIdx]}.`);
+  }
+  document.getElementById('execSummary').innerHTML = summary.map(s => `<li>${s}</li>`).join('');
+}
+
+['fParty', 'fFabric', 'fWidth', 'fRange'].forEach(id => {
+  document.getElementById(id).addEventListener('change', render);
+});
+
+const dash = document.getElementById('dash');
+function toggleReportsFullscreen(forceOff) {
+  const turningOn = forceOff ? false : !dash.classList.contains('pseudo-fullscreen');
+  dash.classList.toggle('pseudo-fullscreen', turningOn);
+  document.body.classList.toggle('reports-fullscreen-active', turningOn);
+  document.getElementById('fsBtn').textContent = turningOn ? 'Exit fullscreen' : 'Fullscreen';
+  window.scrollTo(0, 0);
+  document.documentElement.scrollLeft = 0;
+  function resizeCharts() {
+    Object.values(charts).forEach(c => c.resize());
+    window.dispatchEvent(new Event('resize'));
+  }
+  setTimeout(resizeCharts, 60);
+  setTimeout(resizeCharts, 250);
+  setTimeout(resizeCharts, 500);
+}
+
+document.getElementById('fsBtn').addEventListener('click', () => toggleReportsFullscreen());
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && dash.classList.contains('pseudo-fullscreen')) {
+    toggleReportsFullscreen(true);
+  }
+});
+
+loadFilters().then(render);
+</script>
+<script>
+(function(){
+  if (localStorage.getItem('sidebarCollapsed') === 'true') {
+    document.body.classList.add('sidebar-collapsed');
+  }
+  var cBtn = document.getElementById('sidebarCollapseBtn');
+  var rBtn = document.getElementById('sidebarReopenBtn');
+  function resizeChartsSoon() {
+    [80, 250, 500].forEach(delay => {
+      setTimeout(() => {
+        if (typeof charts !== 'undefined') {
+          Object.values(charts).forEach(c => c.resize());
+        }
+        window.dispatchEvent(new Event('resize'));
+      }, delay);
+    });
+  }
+  if (cBtn) cBtn.addEventListener('click', function(){
+    document.body.classList.add('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', 'true');
+    resizeChartsSoon();
+  });
+  if (rBtn) rBtn.addEventListener('click', function(){
+    document.body.classList.remove('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', 'false');
+    resizeChartsSoon();
+  });
+})();
+</script>
+<script>
+(function(){
+  const toggleBtn = document.getElementById('calcToggleBtn');
+  const panel = document.getElementById('calcPanel');
+  const closeBtn = document.getElementById('calcCloseBtn');
+  const header = document.getElementById('calcHeader');
+  const display = document.getElementById('calcDisplay');
+  const buttonsBox = document.getElementById('calcButtons');
+
+  const keys = ['7','8','9','/','4','5','6','*','1','2','3','-','0','.','=','+','C'];
+  keys.forEach(k => {
+    const btn = document.createElement('button');
+    btn.textContent = k;
+    btn.style.cssText = 'padding:10px 0; border:1px solid #D3DBE5; border-radius:6px; background:#F2F5F9; font-size:14px; cursor:pointer;';
+    if (k === '=') { btn.style.gridColumn = 'span 2'; btn.style.background = '#1E2A44'; btn.style.color = '#FFFFFF'; }
+    if (k === 'C') { btn.style.background = '#A23B3B'; btn.style.color = '#FFFFFF'; }
+    btn.addEventListener('click', () => {
+      if (k === 'C') { display.value = ''; return; }
+      if (k === '=') {
+        try {
+          const clean = display.value.replace(/[^0-9+\-*/.]/g, '');
+          display.value = Function('"use strict"; return (' + clean + ')')();
+        } catch (e) { display.value = 'Error'; }
+        return;
+      }
+      display.value += k;
+    });
+    buttonsBox.appendChild(btn);
+  });
+
+  toggleBtn.addEventListener('click', () => {
+    panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
+  });
+  closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
+
+  let isDragging = false, offsetX = 0, offsetY = 0;
+  header.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    offsetX = e.clientX - panel.offsetLeft;
+    offsetY = e.clientY - panel.offsetTop;
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    panel.style.left = (e.clientX - offsetX) + 'px';
+    panel.style.top = (e.clientY - offsetY) + 'px';
+  });
+  document.addEventListener('mouseup', () => { isDragging = false; });
+
+  const calToggleBtn = document.getElementById('calToggleBtn');
+  const calPanel = document.getElementById('calPanel');
+  const calCloseBtn = document.getElementById('calCloseBtn');
+  const calMonthLabel = document.getElementById('calMonthLabel');
+  const calGrid = document.getElementById('calGrid');
+
+  function renderCalendar() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    calMonthLabel.textContent = monthNames[month] + ' ' + year;
+
+    calGrid.innerHTML = '';
+    ['S','M','T','W','T','F','S'].forEach(d => {
+      const cell = document.createElement('div');
+      cell.textContent = d;
+      cell.style.cssText = 'font-weight:600; color:#8592A6; padding:4px 0;';
+      calGrid.appendChild(cell);
+    });
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+      calGrid.appendChild(document.createElement('div'));
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cell = document.createElement('div');
+      cell.textContent = d;
+      cell.style.cssText = 'padding:5px 0; border-radius:4px;';
+      if (d === today.getDate()) {
+        cell.style.background = '#1E2A44';
+        cell.style.color = '#FFFFFF';
+        cell.style.fontWeight = '600';
+      }
+      calGrid.appendChild(cell);
+    }
+  }
+  renderCalendar();
+
+  calToggleBtn.addEventListener('click', () => {
+    calPanel.style.display = (calPanel.style.display === 'none') ? 'block' : 'none';
+  });
+  calCloseBtn.addEventListener('click', () => { calPanel.style.display = 'none'; });
+
+  document.addEventListener('keydown', (e) => {
+    if (panel.style.display !== 'block') return;
+    if (e.key >= '0' && e.key <= '9') { display.value += e.key; }
+    else if (['+','-','*','/','.'].includes(e.key)) { display.value += e.key; }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      try {
+        const clean = display.value.replace(/[^0-9+\-*/.]/g, '');
+        display.value = Function('"use strict"; return (' + clean + ')')();
+      } catch (err) { display.value = 'Error'; }
+    }
+    else if (e.key === 'Backspace') { display.value = display.value.slice(0, -1); }
+    else if (e.key === 'Escape') { panel.style.display = 'none'; }
+  });
+})();
+</script>
+</body>
+</html>

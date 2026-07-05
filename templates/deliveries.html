@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Deliveries - Krupalu Creation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Calibri, Arial, sans-serif; background: #E8EDF3; color: #1E2A44; }
+  .layout { display: flex; min-height: 100vh; }
+
+  .sidebar { width: 170px; background: #1E2A44; padding: 24px 12px; position: relative; }
+  body.sidebar-collapsed .sidebar { display: none; }
+  #sidebarCollapseBtn { position:absolute; top:10px; right:8px; background:none; border:none; color:#8FA3C0; cursor:pointer; font-size:14px; }
+  #sidebarReopenBtn { display:none; position:fixed; top:16px; left:16px; z-index:999; background:#1E2A44; color:#FFFFFF; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:15px; }
+  body.sidebar-collapsed #sidebarReopenBtn { display:block; }
+  body.sidebar-collapsed .main { padding-left: 64px; }
+  body.sidebar-collapsed #calcBtnWrap { display: none; }
+  body.sidebar-collapsed #calBtnWrap { display: none; }
+  .sidebar h2 { color: #FFFFFF; font-size: 16px; margin-bottom: 20px; }
+  .sidebar .logo-box { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
+  .sidebar .logo-box img { width: 60px; height: 60px; margin-bottom: 10px; }
+  .sidebar .logo-box p.tagline { font-size: 10.5px; color: #8FA3C0; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px; }
+  .sidebar a {
+    display: block; padding: 10px 12px; margin-bottom: 4px;
+    border-radius: 6px; color: #AEB9C9; text-decoration: none; font-size: 14px;
+  }
+  .sidebar a.active { background: #3B6EA5; color: #FFFFFF; }
+
+  .main { flex: 1; padding: 24px 32px; }
+  h1 { font-size: 22px; margin-bottom: 20px; }
+
+  .form-card {
+    background: #FFFFFF; border: 1px solid #D3DBE5; border-radius: 10px; padding: 24px;
+    max-width: 750px; margin-bottom: 28px;
+  }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #5B6B7F; }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid #D3DBE5; font-size: 14px;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  #itemsTable { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  #itemsTable th, #itemsTable td { text-align: left; padding: 8px 10px; font-size: 12.5px; border-bottom: 1px solid #D3DBE5; }
+  #itemsTable th { color: #5B6B7F; }
+  #itemsTable input { width: 90px; padding: 6px 8px; border-radius: 4px; border: 1px solid #D3DBE5; font-size: 12.5px; }
+
+  .submit-btn {
+    background: #1E2A44; color: #FFFFFF; border: none; border-radius: 8px;
+    padding: 12px 24px; font-size: 14px; cursor: pointer;
+  }
+
+  table.summary { width: 100%; border-collapse: collapse; background: #FFFFFF; border-radius: 10px; overflow: hidden; }
+  table.summary thead { background: #F2F5F9; }
+  table.summary th, table.summary td { text-align: left; padding: 12px 14px; font-size: 13px; border-bottom: 1px solid #D3DBE5; }
+  table.summary th { color: #5B6B7F; font-weight: 600; }
+  .balance-zero { color: #2C6B3F; font-weight: 600; }
+  .balance-pending { color: #A23B3B; font-weight: 600; }
+</style>
+</head>
+<body>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div id="toast" style="position:fixed; top:20px; right:20px; background:#1E2A44; color:#FFFFFF; padding:14px 20px; border-radius:8px; font-size:14px; z-index:999; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+      {{ messages[0] }}
+    </div>
+    <script>
+      setTimeout(() => {
+        const t = document.getElementById("toast");
+        if (t) t.style.display = "none";
+      }, 3000);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="layout">
+  <button id="sidebarReopenBtn" title="Show menu">☰</button>
+
+  <div class="sidebar">
+    <button id="sidebarCollapseBtn" title="Hide menu">⟨⟨</button>
+    <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; width:100%;">
+      <img src="/static/swaminarayan_symbol.png" alt="" style="width:20px; height:26px; flex-shrink:0;">
+      <span style="font-size:14px; color:#eda100; font-weight:600; text-align:center;">જય સ્વામિનારાયણ</span>
+      <img src="/static/swaminarayan_symbol.png" alt="" style="width:20px; height:26px; flex-shrink:0;">
+    </div>
+    <div class="logo-box">
+      <img src="/static/logo.png" alt="Krupalu Creation logo">
+      <h2 style="margin:0;">Krupalu Creation</h2>
+      <p class="tagline">Digital Printing</p>
+    </div>
+    <a href="/">Dashboard</a>
+    <a href="/new-work">Orders</a>
+    <a href="/deliveries" class="active">Deliveries</a>
+    <a href="/payments">Payments</a>
+    <a href="/parties">Parties</a>
+    <a href="/balance-sheet">Balance sheet</a>
+    <a href="/change-log">Change log</a>
+    <a href="/reports">Reports</a>
+  <div id="calBtnWrap" style="position:fixed; bottom:56px; left:12px; width:146px; z-index:500;">
+      <button id="calToggleBtn" style="width:100%; height:34px; border-radius:6px; border:none; background:#2a3f5f; color:#AEB9C9; font-size:12px; cursor:pointer;">📅 Calendar</button>
+    </div>
+    <div id="calcBtnWrap" style="position:fixed; bottom:16px; left:12px; width:146px; z-index:500;">
+      <button id="calcToggleBtn" style="width:100%; height:34px; border-radius:6px; border:none; background:#2a3f5f; color:#AEB9C9; font-size:12px; cursor:pointer;">🧮 Calculator</button>
+    </div>
+
+    <div id="calPanel" style="display:none; position:fixed; bottom:96px; left:12px; width:230px; background:#FFFFFF; border:1px solid #D3DBE5; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,0.2); z-index:1000; padding:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span id="calMonthLabel" style="font-size:13px; font-weight:600; color:#1E2A44;"></span>
+        <span id="calCloseBtn" style="cursor:pointer; font-size:16px; color:#5B6B7F;">×</span>
+      </div>
+      <div id="calGrid" style="display:grid; grid-template-columns:repeat(7,1fr); gap:3px; font-size:11px; text-align:center;"></div>
+    </div>
+  </div>
+
+  <div id="calcPanel" style="display:none; position:fixed; top:100px; left:100px; width:230px; background:#FFFFFF; border:1px solid #D3DBE5; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,0.2); z-index:1000;">
+    <div id="calcHeader" style="cursor:move; background:#1E2A44; color:#FFFFFF; padding:8px 12px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+      <span>Calculator</span>
+      <span id="calcCloseBtn" style="cursor:pointer; font-size:16px; line-height:1;">×</span>
+    </div>
+    <div style="padding:10px;">
+      <input id="calcDisplay" readonly style="width:100%; padding:8px; margin-bottom:8px; font-size:16px; text-align:right; border:1px solid #D3DBE5; border-radius:6px;">
+      <div id="calcButtons" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <h1>New delivery challan</h1>
+
+    <form class="form-card" method="POST" action="/deliveries" id="deliveryForm">
+      <input type="hidden" name="party_id_for_whatsapp" id="partyIdHidden">
+      <div class="row2">
+        <div class="field">
+          <label>Company name</label>
+          <select id="partySelect" required>
+            <option value="">-- Select company --</option>
+            {% for p in parties %}
+              <option value="{{ p.id }}" data-phone="{{ p.phone }}">{{ p.company_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Phone number</label>
+          <input type="text" id="phoneDisplay" readonly style="background:#F2F5F9;">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Outward challan number</label>
+          <input type="text" name="outward_challan_number" id="challanNumberInput" required>
+        </div>
+        <div class="field">
+          <label>Or continue an existing challan</label>
+          <select id="existingChallanSelect">
+            <option value="">-- New challan (auto number above) --</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Delivery date</label>
+          <input type="date" name="delivery_date" required>
+        </div>
+      </div>
+
+      <div id="itemsSection" style="display:none;">
+        <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:#5B6B7F;">
+          Fabric items for this company (enter meters for items you are delivering now)
+        </label>
+        <table id="itemsTable">
+          <thead>
+            <tr>
+              <th>Fabric</th>
+              <th>Size</th>
+              <th>Balance</th>
+              <th>Takka entry (Enter after each)</th>
+              <th>Printing meters (actual)</th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+      </div>
+
+      <button type="submit" class="submit-btn">Save delivery challan</button>
+    </form>
+
+    <table class="summary">
+      <thead>
+        <tr>
+          <th>Company</th>
+          <th>Fabric</th>
+          <th>Size</th>
+          <th>Given</th>
+          <th>Delivered so far</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in all_items %}
+        <tr>
+          <td>{{ item.company_name }}</td>
+          <td>{{ item.fabric_name }}</td>
+          <td>{{ item.fabric_width_inches }}"</td>
+          <td>{{ item.meters_given }} m</td>
+          <td>{{ item.delivered }} m</td>
+          <td class="{{ 'balance-zero' if item.balance == 0 else 'balance-pending' }}">{{ item.balance }} m</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const partySelect = document.getElementById("partySelect");
+const phoneDisplay = document.getElementById("phoneDisplay");
+const itemsSection = document.getElementById("itemsSection");
+const itemsBody = document.getElementById("itemsBody");
+
+
+async function autoFillChallanNumber() {
+  const res = await fetch("/api/next-challan-number");
+  const data = await res.json();
+  document.getElementById("challanNumberInput").value = data.challan_number;
+}
+autoFillChallanNumber();
+
+async function loadRecentChallans() {
+  const res = await fetch("/api/recent-challans");
+  const data = await res.json();
+  const select = document.getElementById("existingChallanSelect");
+  data.challans.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    select.appendChild(opt);
+  });
+}
+loadRecentChallans();
+
+document.getElementById("existingChallanSelect").addEventListener("change", function() {
+  if (this.value) {
+    document.getElementById("challanNumberInput").value = this.value;
+  } else {
+    autoFillChallanNumber();
+  }
+});
+
+partySelect.addEventListener("change", async function() {
+  const partyId = this.value;
+  document.getElementById("partyIdHidden").value = partyId;
+  const selectedOption = this.options[this.selectedIndex];
+  phoneDisplay.value = selectedOption.dataset.phone || "";
+
+  if (!partyId) { itemsSection.style.display = "none"; return; }
+
+  const res = await fetch(`/api/party-open-items/${partyId}`);
+  const data = await res.json();
+
+  itemsBody.innerHTML = "";
+  if (data.items.length === 0) {
+    itemsSection.style.display = "none";
+    alert("Is company ka koi open order nahi hai (sab already deliver ho chuka hai).");
+    return;
+  }
+
+  data.items.forEach(item => {
+    const row = document.createElement("tr");
+    row.dataset.itemId = item.id;
+    row.innerHTML = `
+      <td>${item.fabric_name}</td>
+      <td>${item.fabric_width_inches}"</td>
+      <td>${item.balance} m</td>
+      <td>
+        <input type="hidden" name="item_id" value="${item.id}">
+        <input type="hidden" class="takka-hidden" name="takka_list_${item.id}" value="">
+        <input type="number" step="0.01" class="takka-input" placeholder="Takka m, Enter" style="width:110px;">
+        <div class="takka-chips" style="margin-top:4px; font-size:11px; color:#5B6B7F;"></div>
+        <div style="font-size:12px; font-weight:600; margin-top:2px;">Qty: <span class="qty-total">0.00</span> m</div>
+      </td>
+      <td><input type="number" step="0.1" name="printing_meters" placeholder="Actual printed"></td>
+    `;
+    itemsBody.appendChild(row);
+
+    const takkas = [];
+    const takkaInput = row.querySelector(".takka-input");
+    const chipsBox = row.querySelector(".takka-chips");
+    const qtyLabel = row.querySelector(".qty-total");
+    const hiddenField = row.querySelector(".takka-hidden");
+
+    function updateRow() {
+      qtyLabel.textContent = takkas.reduce((a, b) => a + b, 0).toFixed(2);
+      chipsBox.textContent = takkas.map(t => t.toFixed(2)).join(", ");
+      hiddenField.value = takkas.join(",");
+    }
+
+    takkaInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const val = parseFloat(takkaInput.value);
+        if (!isNaN(val) && val > 0) {
+          takkas.push(val);
+          takkaInput.value = "";
+          updateRow();
+        }
+      }
+    });
+  });
+
+  itemsSection.style.display = "block";
+});
+</script>
+<script>
+(function(){
+  if (localStorage.getItem('sidebarCollapsed') === 'true') {
+    document.body.classList.add('sidebar-collapsed');
+  }
+  var cBtn = document.getElementById('sidebarCollapseBtn');
+  var rBtn = document.getElementById('sidebarReopenBtn');
+  if (cBtn) cBtn.addEventListener('click', function(){
+    document.body.classList.add('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', 'true');
+  });
+  if (rBtn) rBtn.addEventListener('click', function(){
+    document.body.classList.remove('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', 'false');
+  });
+})();
+</script>
+
+<script>
+(function(){
+  const toggleBtn = document.getElementById('calcToggleBtn');
+  const panel = document.getElementById('calcPanel');
+  const closeBtn = document.getElementById('calcCloseBtn');
+  const header = document.getElementById('calcHeader');
+  const display = document.getElementById('calcDisplay');
+  const buttonsBox = document.getElementById('calcButtons');
+
+  const keys = ['7','8','9','/','4','5','6','*','1','2','3','-','0','.','=','+','C'];
+  keys.forEach(k => {
+    const btn = document.createElement('button');
+    btn.textContent = k;
+    btn.style.cssText = 'padding:10px 0; border:1px solid #D3DBE5; border-radius:6px; background:#F2F5F9; font-size:14px; cursor:pointer;';
+    if (k === '=') { btn.style.gridColumn = 'span 2'; btn.style.background = '#1E2A44'; btn.style.color = '#FFFFFF'; }
+    if (k === 'C') { btn.style.background = '#A23B3B'; btn.style.color = '#FFFFFF'; }
+    btn.addEventListener('click', () => {
+      if (k === 'C') { display.value = ''; return; }
+      if (k === '=') {
+        try {
+          const clean = display.value.replace(/[^0-9+\-*/.]/g, '');
+          display.value = Function('"use strict"; return (' + clean + ')')();
+        } catch (e) { display.value = 'Error'; }
+        return;
+      }
+      display.value += k;
+    });
+    buttonsBox.appendChild(btn);
+  });
+
+  toggleBtn.addEventListener('click', () => {
+    panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
+  });
+  closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
+
+  let isDragging = false, offsetX = 0, offsetY = 0;
+  header.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    offsetX = e.clientX - panel.offsetLeft;
+    offsetY = e.clientY - panel.offsetTop;
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    panel.style.left = (e.clientX - offsetX) + 'px';
+    panel.style.top = (e.clientY - offsetY) + 'px';
+  });
+  document.addEventListener('mouseup', () => { isDragging = false; });
+
+  const calToggleBtn = document.getElementById('calToggleBtn');
+  const calPanel = document.getElementById('calPanel');
+  const calCloseBtn = document.getElementById('calCloseBtn');
+  const calMonthLabel = document.getElementById('calMonthLabel');
+  const calGrid = document.getElementById('calGrid');
+
+  function renderCalendar() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    calMonthLabel.textContent = monthNames[month] + ' ' + year;
+
+    calGrid.innerHTML = '';
+    ['S','M','T','W','T','F','S'].forEach(d => {
+      const cell = document.createElement('div');
+      cell.textContent = d;
+      cell.style.cssText = 'font-weight:600; color:#8592A6; padding:4px 0;';
+      calGrid.appendChild(cell);
+    });
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+      calGrid.appendChild(document.createElement('div'));
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cell = document.createElement('div');
+      cell.textContent = d;
+      cell.style.cssText = 'padding:5px 0; border-radius:4px;';
+      if (d === today.getDate()) {
+        cell.style.background = '#1E2A44';
+        cell.style.color = '#FFFFFF';
+        cell.style.fontWeight = '600';
+      }
+      calGrid.appendChild(cell);
+    }
+  }
+  renderCalendar();
+
+  calToggleBtn.addEventListener('click', () => {
+    calPanel.style.display = (calPanel.style.display === 'none') ? 'block' : 'none';
+  });
+  calCloseBtn.addEventListener('click', () => { calPanel.style.display = 'none'; });
+
+  document.addEventListener('keydown', (e) => {
+    if (panel.style.display !== 'block') return;
+    if (e.key >= '0' && e.key <= '9') { display.value += e.key; }
+    else if (['+','-','*','/','.'].includes(e.key)) { display.value += e.key; }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      try {
+        const clean = display.value.replace(/[^0-9+\-*/.]/g, '');
+        display.value = Function('"use strict"; return (' + clean + ')')();
+      } catch (err) { display.value = 'Error'; }
+    }
+    else if (e.key === 'Backspace') { display.value = display.value.slice(0, -1); }
+    else if (e.key === 'Escape') { panel.style.display = 'none'; }
+  });
+})();
+</script>
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+__pycache__/
+venv/
+*.pyc
+static/
+data/
+challans/
+excel_backups/
+statements/
+config.json
+*.db
+*.sqlite3
