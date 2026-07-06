@@ -7,7 +7,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Calibri, Arial, sans-serif; background: #E8EDF3; color: #1E2A44; }
   .layout { display: flex; min-height: 100vh; }
-  .sidebar { width: 170px; background: #1E2A44; padding: 24px 12px; position: relative; }
+  .sidebar { width: 170px; background: #1E2A44; padding: 24px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
   body.sidebar-collapsed .sidebar { display: none; }
   #sidebarCollapseBtn { position:absolute; top:10px; right:8px; background:none; border:none; color:#8FA3C0; cursor:pointer; font-size:14px; }
   #sidebarReopenBtn { display:none; position:fixed; top:16px; left:16px; z-index:999; background:#1E2A44; color:#FFFFFF; border:none; border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:15px; }
