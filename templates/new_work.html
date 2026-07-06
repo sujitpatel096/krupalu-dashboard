@@ -105,11 +105,11 @@
         </div>
         <div class="field">
           <label>Phone number</label>
-          <input type="tel" name="phone" id="phoneInput" pattern="[0-9]{10}" maxlength="10" title="10 digit number daalo" required oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
+          <input type="tel" name="phone" id="phoneInput" autocomplete="off" pattern="[0-9]{10}" maxlength="10" title="10 digit number daalo" required oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
         </div>
         <div class="field">
           <label>Inward challan number</label>
-          <input type="text" name="challan_number" required>
+          <input type="text" name="challan_number" autocomplete="off" required>
         </div>
         <div class="field">
           <label>Date received</label>
