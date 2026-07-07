@@ -4,6 +4,9 @@ from xhtml2pdf import pisa
 
 CHALLAN_FOLDER = "challans"
 
+COMPANY_ADDRESS = "Plot No 30, 1st Floor, Sai Ashish Industries, Rayka Circle, Udhna, Surat."
+COMPANY_GST_NUMBER = ""  # Add your GST number here once available
+
 
 def safe_folder_name(name):
     cleaned = "".join(c for c in name if c.isalnum() or c in (" ", "_", "-"))
@@ -12,81 +15,154 @@ def safe_folder_name(name):
 
 def build_challan_html(company_name, challan_number, date_str, po_no, items):
     total_takkas = sum(item.get('takka_count', 0) or 0 for item in items)
-    total_qty = sum(item.get('quantity', 0) or 0 for item in items)
+    total_quantity = sum(float(item.get('quantity', 0) or 0) for item in items)
 
     rows_html = ""
     for i, item in enumerate(items, start=1):
         raw_list = str(item.get('takka_list', '') or '')
         takka_values = [v.strip() for v in raw_list.split(',') if v.strip() and v.strip() != '-']
 
-        takka_rows = ""
-        for j in range(0, len(takka_values), 4):
-            chunk = takka_values[j:j + 4]
-            cells = "".join(f'<td class="takka-box">{v}</td>' for v in chunk)
-            takka_rows += f"<tr>{cells}</tr>"
-        if not takka_rows:
-            takka_rows = '<tr><td class="takka-box">-</td></tr>'
+        def build_row(chunk):
+            # 6 boxes with a real spacer <td> between each, so boxes always
+            # stay visually separate (xhtml2pdf does not honor border-spacing).
+            cells = ""
+            for idx in range(6):
+                if idx > 0:
+                    cells += '<td class="takka-spacer"></td>'
+                if idx < len(chunk):
+                    cells += f'<td class="takka-box" valign="middle">{chunk[idx]}</td>'
+                else:
+                    cells += '<td class="takka-box-empty">&nbsp;</td>'
+            return f"<tr>{cells}</tr>"
 
-        rows_html += f"""
-        <tr>
-            <td class="sr">{i}</td>
-            <td class="fabric-name">{item['fabric_name']}</td>
-            <td class="size">{item['size']}</td>
-            <td class="takka-cell">
-                <div class="takka-label">TOTAL TAKKAS: {item.get('takka_count', 0)}</div>
-                <table class="takka-grid">{takka_rows}</table>
-            </td>
-            <td class="qty">{item['quantity']}</td>
-        </tr>
-        """
+        takka_rows = ""
+        for j in range(0, len(takka_values), 6):
+            takka_rows += build_row(takka_values[j:j + 6])
+
+        if not takka_rows:
+            takka_rows = build_row(['-'])
+
+        # The last item row's own bottom border is removed, and a small
+        # extra bottom padding is added so there's a bit of breathing room
+        # before the summary row's border line (without drawing a second line).
+        is_last_row = (i == len(items))
+        no_border = ' style="border-bottom:none;"' if is_last_row else ''
+
+        rows_html += (
+            f'<tr><td class="sr"{no_border}>{i}</td>'
+            f'<td class="fabric-name"{no_border}>{item["fabric_name"]}</td>'
+            f'<td class="size"{no_border}>{item.get("size", "") or ""}</td>'
+            f'<td class="takka-cell"{no_border}><div class="takka-label-bar">TOTAL TAKKAS: {item.get("takka_count", 0)}</div>'
+            f'<table class="takka-grid">{takka_rows}</table></td>'
+            f'<td class="qty"{no_border}>{float(item["quantity"]):,}</td></tr>'
+        )
+
 
     html = f"""
     <html>
     <head>
     <style>
-        body {{ font-family: Helvetica; font-size: 11px; color: #1E2A44; }}
+        @page {{
+            margin: 0.4in 0.3in 0.4in 0.3in;
+        }}
+        body {{ font-family: Helvetica; font-size: 10px; color: #1E2A44; }}
+        
+        .outer-frame {{ width: 100%; border-collapse: collapse; }}
+        .outer-frame > tr > td {{ border: 1px solid #D6DEE6; padding: 10px 12px; }}
+
         .header-table {{ width: 100%; margin-bottom: 8px; }}
-        .header-table td {{ vertical-align: top; }}
-        .company-name {{ font-size: 22px; font-weight: bold; color: #1E2A44; }}
-        .tagline {{ font-size: 11px; color: #C08A1E; font-weight: bold; letter-spacing: 1px; }}
-        .owner-info {{ text-align: right; font-size: 10px; color: #5B6B7F; }}
-        .owner-info b {{ color: #1E2A44; font-size: 11px; }}
-        .title-bar {{ background-color: #1E2A44; color: #FFFFFF; text-align: center; font-size: 14px; font-weight: bold; letter-spacing: 2px; padding: 7px; margin-bottom: 10px; border-bottom: 3px solid #D9A521; }}
-        .meta-table {{ width: 100%; margin-bottom: 8px; }}
-        .meta-table td {{ vertical-align: top; width: 50%; padding: 6px 8px; font-size: 10px; }}
-        .box-label {{ font-size: 9.5px; color: #C08A1E; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 5px; }}
-        .party-box {{ background-color: #EAF1F8; padding: 7px 8px; border-radius: 4px; border-left: 3px solid #1E2A44; }}
-        .party-name {{ font-size: 12px; font-weight: bold; color: #1E2A44; }}
-        table.items {{ width: 100%; border-collapse: collapse; }}
-        table.items th {{ background-color: #1E2A44; color: #FFFFFF; padding: 7px 6px; font-size: 9.5px; border: 1px solid #1E2A44; text-align: left; }}
-        table.items td {{ padding: 8px 6px; font-size: 10px; border: 1px solid #D7DEE8; vertical-align: top; }}
-        td.sr {{ text-align: center; color: #5B6B7F; }}
-        td.fabric-name {{ font-weight: bold; color: #1E2A44; }}
-        td.qty {{ text-align: right; font-weight: bold; white-space: nowrap; color: #1E2A44; }}
-        .takka-label {{ font-size: 9px; color: #1E2A44; font-weight: bold; margin-bottom: 4px; }}
-        table.takka-grid {{ border-collapse: collapse; }}
-        table.takka-grid td.takka-box {{ border: 1px solid #D7DEE8; background-color: #F5F8FB; padding: 4px 8px; font-size: 9.5px; text-align: center; color: #3B6EA5; }}
-        .summary-row td {{ background-color: #FBF3E0; font-weight: bold; border: 1px solid #E8D6A0; padding: 9px 6px; font-size: 10.5px; white-space: nowrap; }}
-        .summary-label {{ color: #5B6B7F; }}
-        .takka-total-summary {{ color: #C08A1E; }}
-        .signature-label {{ font-size: 10px; color: #5B6B7F; }}
-        .for-company {{ color: #1E2A44; }}
-        .page-frame {{ border: 1px solid #D7DEE8; border-radius: 6px; padding: 14px 16px; }}
+        .header-table td {{ vertical-align: middle; }}
         .logo-img {{ border-radius: 50%; }}
+        .company-name {{ font-size: 18px; font-weight: bold; color: #1E2A44; }}
+        .tagline {{ font-size: 10px; color: #5B6B7F; }}
+        .address-line {{ font-size: 8.5px; color: #5B6B7F; margin-top: 1px; }}
+        .gst-line {{ font-size: 8.5px; color: #5B6B7F; }}
+        .owner-info {{ text-align: right; font-size: 9.5px; color: #5B6B7F; line-height: 1.2; }}
+        .owner-info b {{ color: #1E2A44; font-size: 10px; }}
+
+        .title-bar {{ background-color: #1E2A44; color: #FFFFFF; text-align: center; font-size: 13px; font-weight: bold; letter-spacing: 2px; padding: 5px; margin-bottom: 8px; }}
+
+        .meta-table {{ width: 100%; margin-bottom: 8px; border-collapse: collapse; border: none; }}
+        .meta-table td {{ vertical-align: top; width: 50%; padding: 2px 4px; font-size: 10px; border: none; }}
+        .box-label {{ font-size: 9px; color: #5B6B7F; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px; }}
+        .party-box {{ background-color: #F2F5F9; padding: 4px 6px; border-radius: 4px; }}
+        .party-name {{ font-size: 11px; font-weight: bold; color: #1E2A44; }}
+        .challan-no-value {{ color: #1E2A44; }}
+
+        table.items {{ width: 100%; border-collapse: collapse; }}
+        table.items th {{ background-color: #F2F5F9; color: #1E2A44; padding: 5px 4px; font-size: 9.5px; font-weight: bold; text-align: left; border-top: 1.5px solid #1E2A44; border-bottom: 1.5px solid #1E2A44; }}
+        table.items td {{ padding: 10px 4px; font-size: 9.5px; border-bottom: 1px solid #D3DBE5; vertical-align: middle; }}
+        td.sr {{ text-align: center; color: #5B6B7F; width: 5%; }}
+        td.fabric-name {{ font-weight: bold; color: #1E2A44; width: 22%; }}
+        td.size {{ white-space: nowrap; width: 8%; }}
+        td.takka-cell {{ padding: 10px 4px; width: 52%; }}
+        td.qty {{ text-align: right; font-weight: bold; white-space: nowrap; color: #1E2A44; width: 13%; }}
+
+        .takka-label-bar {{ 
+            color: #1a56db; 
+            font-size: 9px; 
+            font-weight: bold;
+            padding: 0px 0px 4px 0px; 
+        }}
+        
+        table.takka-grid {{ 
+            border-collapse: collapse; 
+            width: auto;
+            margin: 0;
+            padding: 0;
+        }}
+        
+        table.takka-grid td.takka-box {{ 
+            width: 45px; 
+            height: 18px;
+            border: 1px solid #D3DBE5; 
+            border-radius: 4px; 
+            background-color: #F2F5F9; 
+            padding: 3px 4px 2px 4px; 
+            font-size: 9px; 
+            line-height: 9px;
+            text-align: center; 
+            vertical-align: middle;
+            color: #1E2A44; 
+        }}
+        table.takka-grid td.takka-box-empty {{
+            width: 45px;
+            border: none;
+            background: transparent;
+            padding: 2px 4px;
+        }}
+        table.takka-grid td.takka-spacer {{
+            width: 5px;
+            border: none;
+            background: transparent;
+            padding: 0;
+        }}
+
+        table.items tr.summary-row td {{ background-color: #F2F5F9; font-weight: bold; padding: 8px 4px; font-size: 10px; white-space: nowrap; border-top: 1.5px solid #9AAEC4; border-bottom: 1.5px solid #9AAEC4; }}
+        .takka-total-summary {{ color: #1E2A44; font-weight: bold; }}
+
+        .summary-separator {{
+            border-bottom: 1.5px solid #000000;
+            margin-bottom: 15px;
+        }}
+
+        .signature-label {{ font-size: 9px; color: #5B6B7F; }}
+        .signature-table {{ width: 100%; margin-top: 8px; border-collapse: collapse; border: none; }}
+        .signature-table td {{ padding: 2px 4px; border: none; vertical-align: bottom; font-size: 10px; }}
     </style>
     </head>
     <body>
-    <div class="page-frame">
-        <div class="title-bar">DELIVERY CHALLAN</div>
-
+    <table class="outer-frame"><tr><td>
         <table class="header-table">
             <tr>
-                <td style="width:15%;">
-                    <img class="logo-img" src="static/logo.png" width="60" height="60"/>
+                <td style="width:12%;">
+                    <img class="logo-img" src="static/logo.png" width="45" height="45"/>
                 </td>
-                <td style="width:55%;">
+                <td style="width:58%;">
                     <span class="company-name">KRUPALU CREATION</span><br/>
-                    <span class="tagline">DIGITAL PRINTING</span>
+                    <span class="tagline">DIGITAL PRINTING</span><br/>
+                    <span class="address-line">{COMPANY_ADDRESS}</span><br/>
+                    <span class="gst-line">GST No: {COMPANY_GST_NUMBER or '-'}</span>
                 </td>
                 <td class="owner-info">
                     <b>Sunny Patel</b><br/>
@@ -95,6 +171,8 @@ def build_challan_html(company_name, challan_number, date_str, po_no, items):
                 </td>
             </tr>
         </table>
+
+        <div class="title-bar">DELIVERY CHALLAN</div>
 
         <table class="meta-table">
             <tr>
@@ -106,50 +184,55 @@ def build_challan_html(company_name, challan_number, date_str, po_no, items):
                 </td>
                 <td>
                     <div class="box-label">CHALLAN DETAILS</div>
-                    Challan No: <b>{challan_number}</b><br/>
+                    Challan No: <b class="challan-no-value">{challan_number}</b><br/>
                     Date: <b>{date_str}</b><br/>
-                    PO No: <b>{po_no}</b>
+                    PO No: <b>{po_no or ''}</b>
                 </td>
             </tr>
         </table>
 
         <table class="items">
             <tr>
-                <th style="width:6%;">SR.<br/>NO.</th>
-                <th style="width:20%;">FABRIC NAME</th>
-                <th style="width:10%;">SIZE</th>
-                <th style="width:50%;">TAKKA DETAILS (METERS BREAKDOWN)</th>
-                <th style="width:14%; text-align:right;">TOTAL<br/>QTY (M)</th>
+                <th style="width:5%;">SR.<br/>NO.</th>
+                <th style="width:22%;">FABRIC NAME</th>
+                <th style="width:8%;">SIZE</th>
+                <th style="width:52%;">TAKKA DETAILS (METERS BREAKDOWN)</th>
+                <th style="width:13%; text-align:right;">TOTAL<br/>QTY (M)</th>
             </tr>
             {rows_html}
             <tr class="summary-row">
                 <td colspan="3"></td>
-                <td colspan="2"><span class="summary-label">TOTAL SUMMARY:</span> <span class="takka-total-summary">Total Takkas: {total_takkas}</span></td>
+                <td style="text-align: left;">
+                    <span class="takka-total-summary">Total Takkas: {total_takkas}</span>
+                </td>
+                <td style="text-align: right; color: #1E2A44; font-weight: bold;">
+                    {total_quantity:,} m
+                </td>
             </tr>
         </table>
 
-        <table style="width:100%; margin-top:16px;">
+        <div class="summary-separator"></div>
+
+        <table class="signature-table">
             <tr>
-                <td style="width:50%;">Received in good condition, By ______________</td>
+                <td style="width:50%;">Received in good condition By ______________</td>
                 <td style="width:50%; text-align:right;">
-                    <b class="for-company">For, Krupalu Creation</b><br/><br/>
-                    <img src="static/signature.png" width="110"/><br/>
+                    <b>For, Krupalu Creation</b><br/>
+                    <img src="static/signature.png" width="75"/><br/>
                     <span class="signature-label">Authorized Signature</span>
                 </td>
             </tr>
         </table>
 
-        <div style="margin-top:20px; padding-top:8px; border-top:1px dashed #D7DEE8; font-size:9px; color:#5B6B7F;">
+        <div style="margin-top:12px; padding-top:6px; border-top:1px dashed #D3DBE5; font-size:8.5px; color:#5B6B7F;">
             <b>Terms &amp; Conditions:</b><br/>
-            1. Goods once delivered will not be taken back.<br/>
-            2. Check delivery immediately. Any discrepancy should be reported within 24 hours.
+            1. Goods once delivered will not be taken back. 2. Check delivery immediately. Any discrepancy should be reported within 24 hours.
         </div>
-    </div>
+    </td></tr></table>
     </body>
     </html>
     """
     return html
-
 
 def generate_challan_pdf(company_name, challan_number, date_str, po_no, items):
     month_folder = datetime.now().strftime("%Y-%m")
@@ -165,82 +248,3 @@ def generate_challan_pdf(company_name, challan_number, date_str, po_no, items):
         pisa.CreatePDF(html, dest=f)
 
     return filepath
-
-def generate_statement_pdf(company_name, period_label, orders, total_given, total_delivered):
-    rows_html = ""
-    for i, o in enumerate(orders, start=1):
-        rows_html += f"""
-        <tr>
-            <td>{i}</td>
-            <td>{o['fabric_name']}</td>
-            <td>{o['date_received']}</td>
-            <td>{o['inward_challan_number']}</td>
-            <td align="right">{o['meters_given']}</td>
-            <td align="right">{o['delivered']}</td>
-        </tr>
-        """
-
-    html = f"""
-    <html>
-    <head>
-    <style>
-        body {{ font-family: Helvetica; font-size: 11px; color: #1E2A44; }}
-        h2 {{ text-align: center; letter-spacing: 2px; font-size: 13px; color: #5B6B7F; }}
-        .company {{ text-align: center; font-size: 22px; font-weight: bold; margin: 0; }}
-        .tagline {{ text-align: center; font-size: 11px; color: #5B6B7F; margin: 2px 0 10px; }}
-        table.summary {{ width: 100%; margin-bottom: 10px; }}
-        table.summary td {{ font-size: 11px; padding: 4px 0; }}
-        table.items {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
-        table.items th {{ background-color: #1E2A44; color: white; padding: 6px; font-size: 10px; border: 1px solid #1E2A44; }}
-        table.items td {{ padding: 6px; font-size: 10px; border: 1px solid #D3DBE5; }}
-    </style>
-    </head>
-    <body>
-        <h2>PARTY STATEMENT</h2>
-        <p class="company">Krupalu Creation</p>
-        <p class="tagline">Digital Printing</p>
-        <hr>
-        <table class="summary">
-            <tr>
-                <td>Party: <b>{company_name}</b></td>
-                <td>Period: <b>{period_label}</b></td>
-            </tr>
-            <tr>
-                <td>Total given: <b>{total_given} m</b></td>
-                <td>Total delivered: <b>{total_delivered} m</b></td>
-            </tr>
-        </table>
-        <table class="items">
-            <tr>
-                <th>Sr</th>
-                <th>Fabric</th>
-                <th>Date</th>
-                <th>Challan</th>
-                <th>Given</th>
-                <th>Delivered</th>
-            </tr>
-            {rows_html}
-        </table>
-        <br/>
-        <table style="width:100%; margin-top:20px;">
-            <tr>
-                <td></td>
-                <td align="right">
-                    <img src="static/signature.png" width="110"/><br/>
-                    <span style="font-size:10px; color:#5B6B7F;">Authorized Signature</span>
-                </td>
-            </tr>
-        </table>
-    </body>
-    </html>
-    """
-
-    folder_path = os.path.join("statements", safe_folder_name(company_name))
-    os.makedirs(folder_path, exist_ok=True)
-    filename = f"statement_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-    filepath = os.path.join(folder_path, filename)
-
-    with open(filepath, "wb") as f:
-        pisa.CreatePDF(html, dest=f)
-
-    return filepath, filename
