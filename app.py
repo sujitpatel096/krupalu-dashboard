@@ -3,7 +3,7 @@ import json
 import excel_backup
 import pdf_challan
 from flask import send_from_directory
-from flask import Flask, render_template, request, redirect, flash
+from flask import Flask, render_template, request, redirect, flash, session
 from db import get_db_connection, log_change, log_notification
 from datetime import datetime, timedelta
 from rapidfuzz import fuzz, process
@@ -11,6 +11,37 @@ from rapidfuzz import fuzz, process
 
 app = Flask(__name__)
 app.secret_key = "krupalu-dashboard-secret-key"
+
+def load_config():
+    with open("config.json") as f:
+        return json.load(f)
+
+
+@app.before_request
+def require_login():
+    allowed_endpoints = ("login", "static")
+    if request.endpoint in allowed_endpoints:
+        return
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        config = load_config()
+        if password == config.get("login_password", ""):
+            session["logged_in"] = True
+            return redirect("/")
+        return render_template("login.html", error="Incorrect password. Please try again.")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.pop("logged_in", None)
+    return redirect("/login")
 
 @app.route("/")
 def dashboard():

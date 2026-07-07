@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Login - Krupalu Creation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Calibri, Arial, sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #101B33 0%, #1E2A44 40%, #24345A 70%, #16203A 100%);
+    background-size: 200% 200%;
+    animation: gradientShift 14s ease infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Subtle woven-fabric style texture, fitting a printing/textile business */
+  .fabric-pattern {
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 14px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 14px);
+    z-index: 0;
+  }
+
+  /* Soft glow blobs, gently floating */
+  .glow { position: absolute; border-radius: 50%; filter: blur(70px); z-index: 0; }
+  .glow-blue {
+    width: 460px; height: 460px; background: #3B6EA5; opacity: 0.30;
+    top: -140px; left: -120px;
+    animation: floatSlow 10s ease-in-out infinite;
+  }
+  .glow-gold {
+    width: 400px; height: 400px; background: #D9A521; opacity: 0.22;
+    bottom: -150px; right: -110px;
+    animation: floatSlow 12s ease-in-out infinite reverse;
+  }
+  @keyframes floatSlow {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(25px, 20px); }
+  }
+
+  .login-card {
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 42px 38px 34px;
+    width: 100%;
+    max-width: 370px;
+    box-shadow:
+      0 25px 60px rgba(0,0,0,0.45),
+      0 0 0 1px rgba(255,255,255,0.06);
+    text-align: center;
+    animation: cardRise 0.6s ease;
+  }
+  @keyframes cardRise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .swaminarayan {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-bottom: 20px;
+  }
+  .swaminarayan img { width: 18px; height: 24px; }
+  .swaminarayan span {
+    font-size: 13px; color: #C08A1E; font-weight: 600;
+  }
+
+  .logo-ring {
+    width: 84px; height: 84px;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    padding: 4px;
+    background: conic-gradient(from 180deg, #3B6EA5, #D9A521, #3B6EA5);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-circle {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: #EAF1F8;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .logo-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+  h1.company-name {
+    font-size: 22px; color: #1E2A44; font-weight: 700; letter-spacing: 0.3px;
+  }
+  p.tagline {
+    font-size: 10.5px; color: #8FA3C0; letter-spacing: 2px;
+    text-transform: uppercase; margin-top: 3px;
+  }
+
+  .divider {
+    width: 46px; height: 3px; border-radius: 2px;
+    background: linear-gradient(90deg, #3B6EA5, #D9A521);
+    margin: 18px auto 20px;
+  }
+
+  h2.login-heading { font-size: 17px; color: #1E2A44; font-weight: 700; margin-bottom: 4px; }
+  p.login-sub { font-size: 12.5px; color: #5B6B7F; margin-bottom: 24px; }
+
+  .field { text-align: left; margin-bottom: 20px; }
+  .field label {
+    display: block; font-size: 12.5px; font-weight: 600;
+    color: #1E2A44; margin-bottom: 7px;
+  }
+  .password-wrap { position: relative; }
+  .field input {
+    width: 100%; padding: 12px 42px 12px 14px;
+    border: 1.5px solid #D3DBE5; border-radius: 9px;
+    font-size: 14.5px; color: #1E2A44;
+    outline: none;
+    background: #F9FBFD;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  .field input:focus {
+    border-color: #3B6EA5;
+    background: #FFFFFF;
+    box-shadow: 0 0 0 4px rgba(59,110,165,0.12);
+  }
+
+  #toggleShowPassword {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    cursor: pointer; font-size: 11.5px; font-weight: 600; color: #3B6EA5;
+    background: none; border: none; padding: 6px 8px;
+    user-select: none; border-radius: 5px;
+    transition: background 0.15s ease;
+  }
+  #toggleShowPassword:hover { background: #EAF1F8; }
+
+  .error-msg {
+    background: #F3DEDE; color: #A23B3B;
+    font-size: 12.5px; padding: 10px 12px;
+    border-radius: 8px; margin-bottom: 18px;
+    text-align: left;
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  button.login-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #1E2A44, #2C3E63);
+    color: #FFFFFF;
+    border: none;
+    padding: 14px;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(30,42,68,0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  button.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px rgba(30,42,68,0.45);
+    background: linear-gradient(135deg, #263a5e, #34486f);
+  }
+  button.login-btn:active { transform: translateY(0); }
+
+  .footer-note {
+    margin-top: 24px;
+    font-size: 11px;
+    color: #AEB9C9;
+    letter-spacing: 0.2px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="fabric-pattern"></div>
+  <div class="glow glow-blue"></div>
+  <div class="glow glow-gold"></div>
+
+  <div class="login-card">
+    <div class="swaminarayan">
+      <img src="/static/swaminarayan_symbol.png" alt="">
+      <span>જય સ્વામિનારાયણ</span>
+      <img src="/static/swaminarayan_symbol.png" alt="">
+    </div>
+
+    <div class="logo-ring">
+      <div class="logo-circle">
+        <img src="/static/logo.png" alt="Krupalu Creation logo">
+      </div>
+    </div>
+    <h1 class="company-name">Krupalu Creation</h1>
+    <p class="tagline">Digital Printing</p>
+
+    <div class="divider"></div>
+
+    <h2 class="login-heading">Welcome back</h2>
+    <p class="login-sub">Enter your password to access the dashboard</p>
+
+    {% if error %}
+    <div class="error-msg visible">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="password-wrap">
+          <input type="password" name="password" id="password" placeholder="Enter password" required autocomplete="off">
+          <button type="button" id="toggleShowPassword">Show</button>
+        </div>
+      </div>
+
+      <button type="submit" class="login-btn">Login</button>
+    </form>
+
+    <p class="footer-note">Krupalu Creation &middot; Internal dashboard</p>
+  </div>
+
+<script>
+(function(){
+  const toggleBtn = document.getElementById('toggleShowPassword');
+  const passwordInput = document.getElementById('password');
+  toggleBtn.addEventListener('click', function(){
+    const isPassword = passwordInput.type === 'password';
+    passwordInput.type = isPassword ? 'text' : 'password';
+    toggleBtn.textContent = isPassword ? 'Hide' : 'Show';
+  });
+})();
+</script>
+
+</body>
+</html>
