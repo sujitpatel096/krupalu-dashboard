@@ -5,7 +5,7 @@
 <title>{{ party.company_name }} - Krupalu Creation</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Calibri, Arial, sans-serif; background: #E8EDF3; color: #1E2A44; }
+  body { font-family: Calibri, Arial, sans-serif; background: #E8EDF3; color: #1E2A44; overflow-x: hidden; }
   .layout { display: flex; min-height: 100vh; }
 
   .sidebar { width: 170px; background: #1E2A44; padding: 24px 12px; position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; z-index: 300; }
@@ -146,10 +146,11 @@
         <span style="font-weight:600;">{{ total }} m</span>
       </div>
       {% else %}
-      <p style="font-size:12.5px; color:#8592A6;">No data for this period.</p>
+      <p style="font-size:12.5px; color:#8592A6;">Koi data nahi hai is period ke liye.</p>
       {% endfor %}
     </div>
 
+    <div style="overflow-x: auto;">
     <table>
       <thead>
         <tr>
@@ -159,13 +160,12 @@
           <th>Inward challan</th>
           <th>Outward challan</th>
           <th>Delivery date</th>
-          <th>Mtr (this challan)</th>
           <th>Given</th>
           <th>Delivered</th>
           <th>Shortage</th>
           <th>
             Rate
-            <span id="rateEyeBtn" style="cursor:pointer; margin-left:4px;" title="Click 4 times to reveal">👁️‍🗨️</span>
+            <span id="rateEyeBtn" style="cursor:pointer; margin-left:4px;" title="4 baar click karo dekhne ke liye">👁️‍🗨️</span>
           </th>
           <th>Total (incl GST)</th>
           <th>Paid</th>
@@ -195,13 +195,6 @@
             <span style="color:#8592A6;">-</span>
             {% endfor %}
           </td>
-          <td style="min-width:90px;">
-            {% for dd in order.delivery_details %}
-            <div style="padding:2px 0; text-align:right; {% if not loop.last %}border-bottom:1px dashed #F2F5F9;{% endif %}">{{ dd.meters }} Mtr</div>
-            {% else %}
-            <span style="color:#8592A6;">-</span>
-            {% endfor %}
-          </td>
           <td>{{ order.meters_given }} Mtr</td>
           <td>{{ order.delivered }} Mtr</td>
           <td>{{ order.shortage }} Mtr</td>
@@ -224,6 +217,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 
 </div>
