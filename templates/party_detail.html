@@ -146,7 +146,7 @@
         <span style="font-weight:600;">{{ total }} m</span>
       </div>
       {% else %}
-      <p style="font-size:12.5px; color:#8592A6;">Koi data nahi hai is period ke liye.</p>
+      <p style="font-size:12.5px; color:#8592A6;">No data for this period.</p>
       {% endfor %}
     </div>
 
@@ -159,12 +159,13 @@
           <th>Inward challan</th>
           <th>Outward challan</th>
           <th>Delivery date</th>
+          <th>Mtr (this challan)</th>
           <th>Given</th>
           <th>Delivered</th>
           <th>Shortage</th>
           <th>
             Rate
-            <span id="rateEyeBtn" style="cursor:pointer; margin-left:4px;" title="4 baar click karo dekhne ke liye">👁️‍🗨️</span>
+            <span id="rateEyeBtn" style="cursor:pointer; margin-left:4px;" title="Click 4 times to reveal">👁️‍🗨️</span>
           </th>
           <th>Total (incl GST)</th>
           <th>Paid</th>
@@ -190,6 +191,13 @@
           <td style="min-width:100px;">
             {% for dd in order.delivery_details %}
             <div style="padding:2px 0; {% if not loop.last %}border-bottom:1px dashed #F2F5F9;{% endif %}">{{ dd.date }}</div>
+            {% else %}
+            <span style="color:#8592A6;">-</span>
+            {% endfor %}
+          </td>
+          <td style="min-width:90px;">
+            {% for dd in order.delivery_details %}
+            <div style="padding:2px 0; text-align:right; {% if not loop.last %}border-bottom:1px dashed #F2F5F9;{% endif %}">{{ dd.meters }} Mtr</div>
             {% else %}
             <span style="color:#8592A6;">-</span>
             {% endfor %}
