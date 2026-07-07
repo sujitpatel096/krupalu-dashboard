@@ -6,7 +6,7 @@ def get_db_connection():
     with open("config.json") as f:
         config = json.load(f)
     conn = sqlite3.connect(config["database_path"])
-    conn.row_factory = sqlite3.Row  # isse hum column names se data nikal sakte hai
+    conn.row_factory = sqlite3.Row  # lets us access columns by name
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
