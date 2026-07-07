@@ -260,7 +260,7 @@ partySelect.addEventListener("change", async function() {
   itemsBody.innerHTML = "";
   if (data.items.length === 0) {
     itemsSection.style.display = "none";
-    alert("Is company ka koi open order nahi hai (sab already deliver ho chuka hai).");
+    alert("This company has no open orders (everything has already been delivered).");
     return;
   }
 

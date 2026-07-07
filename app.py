@@ -98,11 +98,11 @@ def new_work():
 
         if not (company_name and phone and challan_number and date_received):
             conn.close()
-            return "Company, phone, challan number, aur date bharna zaroori hai.", 400
+            return "Company, phone, challan number, and date are required.", 400
 
         if not (phone.isdigit() and len(phone) == 10):
             conn.close()
-            return "Phone number sirf 10 digit ka hona chahiye.", 400
+            return "Phone number must be exactly 10 digits.", 400
 
         fabric_names = request.form.getlist("fabric_name")
         widths = request.form.getlist("fabric_width_inches")
@@ -192,7 +192,7 @@ def deliveries():
 
         if not (outward_challan_number and delivery_date and item_ids):
             conn.close()
-            return "Challan number, date, aur kam se kam ek fabric bharna zaroori hai.", 400
+            return "Challan number, date, and at least one fabric entry are required.", 400
 
         saved_count = 0
         for i in range(len(item_ids)):
@@ -208,7 +208,7 @@ def deliveries():
             printing_meters = printing_list[i].strip() if i < len(printing_list) else ""
             printing_meters = float(printing_meters) if printing_meters else takka_total
 
-            # Balance ke liye YE (printing_meters) hi meters_delivered ban raha hai
+            # This (printing_meters) becomes meters_delivered for the balance calculation
             cur = conn.execute(
                 """INSERT INTO deliveries
                    (inward_item_id, outward_challan_number, meters_delivered, delivery_date)
@@ -223,7 +223,7 @@ def deliveries():
                     (delivery_id, t)
                 )
 
-            # Shortage automatically calculate hota hai, manual nahi
+            # Shortage is calculated automatically, not entered manually
             shortage = round(printing_meters - takka_total, 2)
             if shortage > 0:
                 conn.execute(
@@ -274,7 +274,19 @@ def deliveries():
         party_id = request.form.get("party_id_for_whatsapp")
         return redirect(f"/deliveries/confirm/{outward_challan_number}?party_id={party_id}")
 
-    parties = conn.execute("SELECT id, company_name, phone FROM parties ORDER BY company_name").fetchall()
+    parties = conn.execute("""
+        SELECT DISTINCT p.id, p.company_name, p.phone
+        FROM parties p
+        JOIN inward_challans ic ON ic.party_id = p.id
+        JOIN inward_items ii ON ii.inward_challan_id = ic.id
+        LEFT JOIN (
+            SELECT inward_item_id, COALESCE(SUM(meters_delivered), 0) AS delivered
+            FROM deliveries
+            GROUP BY inward_item_id
+        ) d ON d.inward_item_id = ii.id
+        WHERE (ii.meters_given - COALESCE(d.delivered, 0)) > 0
+        ORDER BY p.company_name
+    """).fetchall()
 
     rows = conn.execute("""
         SELECT ii.id, p.company_name, ii.fabric_name, ii.fabric_width_inches, ii.meters_given,
@@ -1182,7 +1194,7 @@ def clear_data():
     if request.method == "POST":
         entered_password = request.form.get("password", "")
         if entered_password != config.get("admin_password", ""):
-            return render_template("clear_data.html", error="Galat password, dobara try karo.")
+            return render_template("clear_data.html", error="Incorrect password, please try again.")
 
         conn = get_db_connection()
         tables_to_clear = [
