@@ -166,7 +166,7 @@ def main():
     seed_garment_types(conn, config)
     seed_fabric_master(conn, config)
 
-    # Purane database me naye columns add karna (agar pehle se na ho)
+    # Add new columns to older databases (if not already present)
     try:
         conn.execute("ALTER TABLE inward_items ADD COLUMN fabric_width_inches INTEGER")
     except Exception:
