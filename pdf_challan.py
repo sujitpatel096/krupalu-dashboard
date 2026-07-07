@@ -248,3 +248,201 @@ def generate_challan_pdf(company_name, challan_number, date_str, po_no, items):
         pisa.CreatePDF(html, dest=f)
 
     return filepath
+
+
+def generate_statement_pdf(company_name, period_label, orders, total_given, total_delivered):
+    cards_html = ""
+    for i, o in enumerate(orders, start=1):
+        deliveries = o.get("delivery_details") or []
+        history = o.get("payment_history") or []
+
+        if deliveries:
+            delivery_rows = "".join(
+                f'<tr><td>{d["challan"]}</td><td>{d["date"]}</td><td class="num">{d["meters"]} m</td></tr>'
+                for d in deliveries
+            )
+        else:
+            delivery_rows = '<tr><td colspan="3" class="muted">No deliveries yet</td></tr>'
+
+        if history:
+            history_rows = "".join(
+                f'<tr><td>{h["date"]}</td><td class="num">Rs {h["amount"]}</td></tr>'
+                for h in history
+            )
+        else:
+            history_rows = '<tr><td colspan="2" class="muted">No payments yet</td></tr>'
+
+        cards_html += f"""
+        <table class="order-card">
+            <colgroup>
+                <col style="width:96pt"/><col style="width:96pt"/><col style="width:96pt"/><col style="width:96pt"/>
+                <col style="width:96pt"/><col style="width:96pt"/><col style="width:96pt"/><col style="width:98pt"/>
+            </colgroup>
+            <tr>
+                <td class="card-title" colspan="8">
+                    <span class="sr-badge">{i}</span>
+                    <b>{o['fabric_name']}</b>
+                    <span class="muted">&nbsp;{o.get('size', '-')}&nbsp;&middot;&nbsp;Rate: {o.get('rate', '-')}</span>
+                    <span class="status-badge">{o['payment_status']}</span>
+                </td>
+            </tr>
+            <tr class="fact-row">
+                <td><div class="fact-label">Date received</div>{o['date_received']}</td>
+                <td><div class="fact-label">Inward challan</div>{o['inward_challan_number']}</td>
+                <td><div class="fact-label">Given</div>{o['meters_given']} m</td>
+                <td><div class="fact-label">Delivered</div>{o['delivered']} m</td>
+                <td><div class="fact-label">Shortage</div>{o['shortage']} m</td>
+                <td><div class="fact-label">Total (incl GST)</div>Rs {o['total_amount']}</td>
+                <td><div class="fact-label">Paid</div>Rs {o['amount_paid']}</td>
+                <td><div class="fact-label">Remaining</div>Rs {o['remaining']}</td>
+            </tr>
+            <tr>
+                <td colspan="4" style="padding:4px 6px 8px;">
+                    <div class="fact-label">Deliveries (Outward challan / Date / Meters)</div>
+                    <table class="mini-table">
+                        <colgroup><col style="width:80pt"/><col style="width:80pt"/><col style="width:70pt"/></colgroup>
+                        {delivery_rows}
+                    </table>
+                </td>
+                <td colspan="4" style="padding:4px 6px 8px;">
+                    <div class="fact-label">Payment history</div>
+                    <table class="mini-table">
+                        <colgroup><col style="width:100pt"/><col style="width:100pt"/></colgroup>
+                        {history_rows}
+                    </table>
+                </td>
+            </tr>
+        </table>
+        """
+
+    total_shortage = round(sum(o['shortage'] for o in orders), 2) if orders else 0
+    total_remaining = round(sum(o['remaining'] for o in orders), 2) if orders else 0
+
+    html = f"""
+    <html>
+    <head>
+    <style>
+        @page {{ size: A4 landscape; margin: 12mm; }}
+        body {{ font-family: Helvetica; font-size: 9px; color: #1E2A44; }}
+
+        .outer-frame {{ width: 770pt; border-collapse: collapse; }}
+        .outer-frame > tr > td {{ border: 1px solid #D6DEE6; padding: 10px 12px; }}
+
+        .header-table {{ width: 100%; margin-bottom: 8px; }}
+        .header-table td {{ vertical-align: middle; }}
+        .logo-img {{ border-radius: 50%; }}
+        .company-name {{ font-size: 16px; font-weight: bold; color: #1E2A44; }}
+        .tagline {{ font-size: 9px; color: #5B6B7F; }}
+        .address-line {{ font-size: 7.5px; color: #5B6B7F; margin-top: 1px; }}
+        .gst-line {{ font-size: 7.5px; color: #5B6B7F; }}
+        .owner-info {{ text-align: right; font-size: 8.5px; color: #5B6B7F; line-height: 1.2; }}
+        .owner-info b {{ color: #1E2A44; font-size: 9px; }}
+
+        .title-bar {{ background-color: #1E2A44; color: #FFFFFF; text-align: center; font-size: 12px; font-weight: bold; letter-spacing: 2px; padding: 5px; margin-bottom: 8px; }}
+
+        .meta-table {{ width: 100%; margin-bottom: 10px; border-collapse: collapse; border: none; }}
+        .meta-table td {{ vertical-align: top; width: 50%; padding: 2px 4px; font-size: 9px; border: none; }}
+        .box-label {{ font-size: 8px; color: #5B6B7F; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px; }}
+        .party-box {{ background-color: #F2F5F9; padding: 4px 6px; border-radius: 4px; }}
+        .party-name {{ font-size: 10px; font-weight: bold; color: #1E2A44; }}
+
+        table.order-card {{ width: 770pt; table-layout: fixed; border-collapse: collapse; margin-bottom: 8px; border: 1px solid #D3DBE5; border-radius: 4px; }}
+        td.card-title {{ background-color: #F2F5F9; padding: 2px 6px; font-size: 9.5px; border-bottom: 1.5px solid #9AAEC4; }}
+        .sr-badge {{ display:inline-block; background:#1E2A44; color:#FFFFFF; width:14px; height:14px; text-align:center; border-radius:3px; font-size:8px; margin-right:6px; }}
+        .status-badge {{ float:right; text-transform:capitalize; color:#2E6DA4; font-weight:bold; }}
+
+        tr.fact-row td {{ width: 12.5%; padding: 2px 6px; font-size: 8.5px; font-weight: bold; color: #1E2A44; border-bottom: 1px solid #EDF0F5; vertical-align: top; }}
+        .fact-label {{ font-size: 6.8px; color: #8592A6; font-weight: normal; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }}
+
+        table.mini-table {{ border-collapse: collapse; width: auto; }}
+        table.mini-table td {{ padding: 2px 8px 2px 0; font-size: 7.8px; color: #1E2A44; }}
+        table.mini-table td.num {{ text-align: right; font-weight: bold; }}
+        .muted {{ color: #8592A6; font-weight: normal; }}
+
+        .totals-bar {{ background-color: #F2F5F9; border-top: 1.5px solid #9AAEC4; border-bottom: 1.5px solid #9AAEC4; padding: 6px 8px; font-size: 9px; font-weight: bold; margin-top: 4px; }}
+        .totals-bar span {{ margin-right: 24px; }}
+
+        .signature-label {{ font-size: 8px; color: #5B6B7F; }}
+        .signature-table {{ width: 100%; margin-top: 10px; border-collapse: collapse; border: none; }}
+        .signature-table td {{ padding: 2px 4px; border: none; vertical-align: bottom; font-size: 9px; }}
+
+        .footer-note {{ margin-top:10px; padding-top:6px; border-top:1px dashed #D3DBE5; font-size:7px; color:#5B6B7F; }}
+    </style>
+    </head>
+    <body>
+    <table class="outer-frame"><tr><td>
+        <table class="header-table">
+            <tr>
+                <td style="width:8%;">
+                    <img class="logo-img" src="static/logo.png" width="38" height="38"/>
+                </td>
+                <td style="width:62%;">
+                    <span class="company-name">KRUPALU CREATION</span><br/>
+                    <span class="tagline">DIGITAL PRINTING</span><br/>
+                    <span class="address-line">{COMPANY_ADDRESS}</span><br/>
+                    <span class="gst-line">GST No: {COMPANY_GST_NUMBER or '-'}</span>
+                </td>
+                <td class="owner-info">
+                    <b>Sunny Patel</b><br/>
+                    +91 74055 97333<br/>
+                    info@krupalucreation.com
+                </td>
+            </tr>
+        </table>
+
+        <div class="title-bar">PARTY STATEMENT</div>
+
+        <table class="meta-table">
+            <tr>
+                <td>
+                    <div class="box-label">PARTY</div>
+                    <div class="party-box">
+                        <div class="party-name">{company_name}</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="box-label">STATEMENT DETAILS</div>
+                    Period: <b>{period_label}</b><br/>
+                    Total given: <b>{total_given} m</b> &nbsp;|&nbsp; Total delivered: <b>{total_delivered} m</b>
+                </td>
+            </tr>
+        </table>
+
+        {cards_html}
+
+        <div class="totals-bar">
+            <span>TOTALS</span>
+            <span>Given: {total_given} m</span>
+            <span>Delivered: {total_delivered} m</span>
+            <span>Shortage: {total_shortage} m</span>
+            <span>Remaining: Rs {total_remaining}</span>
+        </div>
+
+        <table class="signature-table">
+            <tr>
+                <td style="width:50%;">Received in good condition, By ______________</td>
+                <td style="width:50%; text-align:right;">
+                    <b>For, Krupalu Creation</b><br/>
+                    <img src="static/signature.png" width="70"/><br/>
+                    <span class="signature-label">Authorized Signature</span>
+                </td>
+            </tr>
+        </table>
+
+        <div class="footer-note">
+            Generated on {datetime.now().strftime('%d-%m-%Y')} &middot; Krupalu Creation internal statement
+        </div>
+    </td></tr></table>
+    </body>
+    </html>
+    """
+
+    folder_path = os.path.join("statements", safe_folder_name(company_name))
+    os.makedirs(folder_path, exist_ok=True)
+    filename = f"statement_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    filepath = os.path.join(folder_path, filename)
+
+    with open(filepath, "wb") as f:
+        pisa.CreatePDF(html, dest=f)
+
+    return filepath, filename

@@ -3,7 +3,7 @@ import json
 import excel_backup
 import pdf_challan
 from flask import send_from_directory
-from flask import Flask, render_template, request, redirect, flash, session
+from flask import Flask, render_template, request, redirect, flash
 from db import get_db_connection, log_change, log_notification
 from datetime import datetime, timedelta
 from rapidfuzz import fuzz, process
@@ -11,37 +11,6 @@ from rapidfuzz import fuzz, process
 
 app = Flask(__name__)
 app.secret_key = "krupalu-dashboard-secret-key"
-
-def load_config():
-    with open("config.json") as f:
-        return json.load(f)
-
-
-@app.before_request
-def require_login():
-    allowed_endpoints = ("login", "static")
-    if request.endpoint in allowed_endpoints:
-        return
-    if not session.get("logged_in"):
-        return redirect("/login")
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        config = load_config()
-        if password == config.get("login_password", ""):
-            session["logged_in"] = True
-            return redirect("/")
-        return render_template("login.html", error="Incorrect password. Please try again.")
-    return render_template("login.html")
-
-
-@app.route("/logout")
-def logout():
-    session.pop("logged_in", None)
-    return redirect("/login")
 
 @app.route("/")
 def dashboard():
@@ -129,11 +98,11 @@ def new_work():
 
         if not (company_name and phone and challan_number and date_received):
             conn.close()
-            return "Company, phone, challan number, and date are required.", 400
+            return "Company, phone, challan number, aur date bharna zaroori hai.", 400
 
         if not (phone.isdigit() and len(phone) == 10):
             conn.close()
-            return "Phone number must be exactly 10 digits.", 400
+            return "Phone number sirf 10 digit ka hona chahiye.", 400
 
         fabric_names = request.form.getlist("fabric_name")
         widths = request.form.getlist("fabric_width_inches")
@@ -223,7 +192,7 @@ def deliveries():
 
         if not (outward_challan_number and delivery_date and item_ids):
             conn.close()
-            return "Challan number, date, and at least one fabric entry are required.", 400
+            return "Challan number, date, aur kam se kam ek fabric bharna zaroori hai.", 400
 
         saved_count = 0
         for i in range(len(item_ids)):
@@ -239,7 +208,7 @@ def deliveries():
             printing_meters = printing_list[i].strip() if i < len(printing_list) else ""
             printing_meters = float(printing_meters) if printing_meters else takka_total
 
-            # This (printing_meters) becomes meters_delivered for the balance calculation
+            # Balance ke liye YE (printing_meters) hi meters_delivered ban raha hai
             cur = conn.execute(
                 """INSERT INTO deliveries
                    (inward_item_id, outward_challan_number, meters_delivered, delivery_date)
@@ -254,7 +223,7 @@ def deliveries():
                     (delivery_id, t)
                 )
 
-            # Shortage is calculated automatically, not entered manually
+            # Shortage automatically calculate hota hai, manual nahi
             shortage = round(printing_meters - takka_total, 2)
             if shortage > 0:
                 conn.execute(
@@ -305,19 +274,7 @@ def deliveries():
         party_id = request.form.get("party_id_for_whatsapp")
         return redirect(f"/deliveries/confirm/{outward_challan_number}?party_id={party_id}")
 
-    parties = conn.execute("""
-        SELECT DISTINCT p.id, p.company_name, p.phone
-        FROM parties p
-        JOIN inward_challans ic ON ic.party_id = p.id
-        JOIN inward_items ii ON ii.inward_challan_id = ic.id
-        LEFT JOIN (
-            SELECT inward_item_id, COALESCE(SUM(meters_delivered), 0) AS delivered
-            FROM deliveries
-            GROUP BY inward_item_id
-        ) d ON d.inward_item_id = ii.id
-        WHERE (ii.meters_given - COALESCE(d.delivered, 0)) > 0
-        ORDER BY p.company_name
-    """).fetchall()
+    parties = conn.execute("SELECT id, company_name, phone FROM parties ORDER BY company_name").fetchall()
 
     rows = conn.execute("""
         SELECT ii.id, p.company_name, ii.fabric_name, ii.fabric_width_inches, ii.meters_given,
@@ -1126,16 +1083,110 @@ def print_statement(party_id):
         cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
         date_filter_sql = f"AND ic.date_received >= '{cutoff}'"
 
-    orders = conn.execute(f"""
-        SELECT ii.fabric_name, ic.date_received, ic.inward_challan_number,
-               ii.meters_given, COALESCE(SUM(d.meters_delivered), 0) AS delivered
+    order_rows = conn.execute(f"""
+        SELECT ii.id AS item_id, ii.fabric_name, ii.fabric_width_inches AS size,
+               ii.rate_per_meter AS rate, ic.date_received, ic.inward_challan_number,
+               ii.meters_given,
+               COALESCE(pr.printing_total, 0) AS printing_total,
+               COALESCE(tk.takka_total, 0) AS delivered,
+               dch.outward_challans, dch.last_delivery_date,
+               COALESCE(pay.total_amount, 0) AS total_amount,
+               COALESCE(pay.amount_paid, 0) AS amount_paid,
+               pay.status AS payment_status
         FROM inward_items ii
         JOIN inward_challans ic ON ii.inward_challan_id = ic.id
-        LEFT JOIN deliveries d ON d.inward_item_id = ii.id
+        LEFT JOIN (
+            SELECT inward_item_id, SUM(meters_delivered) AS printing_total
+            FROM deliveries GROUP BY inward_item_id
+        ) pr ON pr.inward_item_id = ii.id
+        LEFT JOIN (
+            SELECT d.inward_item_id, SUM(dt.meters) AS takka_total
+            FROM deliveries d
+            JOIN delivery_takkas dt ON dt.delivery_id = d.id
+            GROUP BY d.inward_item_id
+        ) tk ON tk.inward_item_id = ii.id
+        LEFT JOIN (
+            SELECT inward_item_id,
+                   GROUP_CONCAT(DISTINCT outward_challan_number) AS outward_challans,
+                   MAX(delivery_date) AS last_delivery_date
+            FROM deliveries GROUP BY inward_item_id
+        ) dch ON dch.inward_item_id = ii.id
+        LEFT JOIN (
+            SELECT d.inward_item_id, SUM(p.total_amount) AS total_amount,
+                   SUM(p.amount_paid) AS amount_paid,
+                   CASE WHEN SUM(p.amount_paid) >= SUM(p.total_amount) AND SUM(p.total_amount) > 0 THEN 'paid'
+                        WHEN SUM(p.amount_paid) > 0 THEN 'partial'
+                        ELSE 'pending' END AS status
+            FROM payments p
+            JOIN deliveries d ON p.delivery_id = d.id
+            GROUP BY d.inward_item_id
+        ) pay ON pay.inward_item_id = ii.id
         WHERE ic.party_id = ? {date_filter_sql}
-        GROUP BY ii.id
         ORDER BY ic.date_received DESC
     """, (party_id,)).fetchall()
+
+    orders = []
+    item_ids_for_history = [o["item_id"] for o in order_rows]
+    payment_history_map = {}
+    delivery_details_map = {}
+    if item_ids_for_history:
+        placeholders_d = ",".join("?" * len(item_ids_for_history))
+        delivery_rows = conn.execute(f"""
+            SELECT d.inward_item_id, d.outward_challan_number, d.delivery_date,
+                   COALESCE((SELECT SUM(dt.meters) FROM delivery_takkas dt WHERE dt.delivery_id = d.id), 0) AS meters
+            FROM deliveries d
+            WHERE d.inward_item_id IN ({placeholders_d})
+            ORDER BY d.delivery_date
+        """, item_ids_for_history).fetchall()
+        for d in delivery_rows:
+            key = d["inward_item_id"]
+            if key not in delivery_details_map:
+                delivery_details_map[key] = []
+            y, m, day = d["delivery_date"].split("-")
+            delivery_details_map[key].append({
+                "challan": d["outward_challan_number"],
+                "date": f"{day}-{m}-{y}",
+                "meters": round(d["meters"], 2)
+            })
+    if item_ids_for_history:
+        placeholders = ",".join("?" * len(item_ids_for_history))
+        history_rows = conn.execute(f"""
+            SELECT d.inward_item_id, ph.paid_amount, ph.paid_date
+            FROM payment_history ph
+            JOIN payments p ON ph.payment_id = p.id
+            JOIN deliveries d ON p.delivery_id = d.id
+            WHERE d.inward_item_id IN ({placeholders})
+            ORDER BY ph.paid_date
+        """, item_ids_for_history).fetchall()
+        for h in history_rows:
+            key = h["inward_item_id"]
+            if key not in payment_history_map:
+                payment_history_map[key] = []
+            date_part = h["paid_date"].split(" ")[0]
+            y, m, d = date_part.split("-")
+            payment_history_map[key].append({"date": f"{d}-{m}-{y}", "amount": h["paid_amount"]})
+
+    for o in order_rows:
+        shortage = round(o["printing_total"] - o["delivered"], 2)
+        remaining = round(o["total_amount"] - o["amount_paid"], 2)
+        orders.append({
+            "item_id": o["item_id"],
+            "fabric_name": o["fabric_name"],
+            "size": f'{o["size"]}"' if o["size"] else "-",
+            "rate": o["rate"] if o["rate"] else "-",
+            "date_received": o["date_received"],
+            "inward_challan_number": o["inward_challan_number"],
+            "delivery_details": delivery_details_map.get(o["item_id"], []),
+            "meters_given": o["meters_given"],
+            "delivered": round(o["delivered"], 2),
+            "shortage": shortage,
+            "total_amount": round(o["total_amount"], 2),
+            "amount_paid": round(o["amount_paid"], 2),
+            "remaining": remaining,
+            "payment_status": o["payment_status"] or "no payment yet",
+            "payment_history": payment_history_map.get(o["item_id"], [])
+        })
+
     conn.close()
 
     total_given = sum(o["meters_given"] for o in orders)
@@ -1225,7 +1276,7 @@ def clear_data():
     if request.method == "POST":
         entered_password = request.form.get("password", "")
         if entered_password != config.get("admin_password", ""):
-            return render_template("clear_data.html", error="Incorrect password, please try again.")
+            return render_template("clear_data.html", error="Galat password, dobara try karo.")
 
         conn = get_db_connection()
         tables_to_clear = [
