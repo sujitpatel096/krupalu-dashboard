@@ -91,8 +91,17 @@
   </div>
 
   <div class="main">
-    <h1>Change log</h1>
-    <p class="sub">Permanent record - entries here cannot be deleted</p>
+    <!-- Clean Top Alignment Block using Flexbox -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+      <div>
+        <h1>Change log</h1>
+        <p class="sub" style="margin-bottom: 0;">Permanent record - entries here cannot be deleted</p>
+      </div>
+      <a href="/logout" style="background: #A23B3B; color: #FFFFFF; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 10px rgba(162,59,59,0.2);">
+        Logout
+      </a>
+    </div>
+
     <a href="/clear-data" style="display:inline-block; font-size:12px; color:#A23B3B; margin-bottom:16px; text-decoration:none;">Clear all test data (password protected)</a>
 
     {% for entry in entries %}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Logout - Krupalu Creation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Calibri, Arial, sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #101B33 0%, #1E2A44 40%, #24345A 70%, #16203A 100%);
+    background-size: 200% 200%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fabric-pattern {
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 14px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 14px);
+    z-index: 0;
+  }
+
+  .logout-card {
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 42px 38px 34px;
+    width: 100%;
+    max-width: 370px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.45);
+    text-align: center;
+  }
+
+  .swaminarayan {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-bottom: 20px;
+  }
+  .swaminarayan img { width: 18px; height: 24px; }
+  .swaminarayan span { font-size: 13px; color: #C08A1E; font-weight: 600; }
+
+  h1 { font-size: 20px; color: #1E2A44; font-weight: 700; margin-bottom: 10px; }
+  p { color: #5B6B7F; font-size: 13.5px; margin-bottom: 24px; line-height: 1.4; }
+
+  .login-btn {
+    display: block;
+    width: 100%;
+    background: linear-gradient(135deg, #1E2A44, #2C3E63);
+    color: #FFFFFF;
+    text-decoration: none;
+    padding: 14px;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    box-shadow: 0 8px 20px rgba(30,42,68,0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px rgba(30,42,68,0.45);
+  }
+</style>
+</head>
+<body>
+
+  <div class="fabric-pattern"></div>
+
+  <div class="logout-card">
+    <div class="swaminarayan">
+      <img src="/static/swaminarayan_symbol.png" alt="">
+      <span>જય સ્વામિનારાયણ</span>
+      <img src="/static/swaminarayan_symbol.png" alt="">
+    </div>
+
+    <h1>Logged Out</h1>
+    <p>You have securely logged out of the system. To log in again, click below.</p>
+
+    <a href="/login" class="login-btn">Go to Login</a>
+  </div>
+
+</body>
+</html>
