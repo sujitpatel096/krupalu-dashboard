@@ -3,7 +3,7 @@ import json
 import excel_backup
 import pdf_challan
 from flask import send_from_directory
-from flask import Flask, render_template, request, redirect, flash
+from flask import Flask, render_template, request, redirect, flash, session
 from db import get_db_connection, log_change, log_notification
 from datetime import datetime, timedelta
 from rapidfuzz import fuzz, process
@@ -178,7 +178,6 @@ def new_work():
 
     return render_template("new_work.html", garment_types=garment_types, fabric_widths=fabric_widths)
 
-
 @app.route("/deliveries", methods=["GET", "POST"])
 def deliveries():
     conn = get_db_connection()
@@ -192,7 +191,7 @@ def deliveries():
 
         if not (outward_challan_number and delivery_date and item_ids):
             conn.close()
-            return "Challan number, date, aur kam se kam ek fabric bharna zaroori hai.", 400
+            return "Challan number, date, and at least one fabric entry are required.", 400
 
         saved_count = 0
         for i in range(len(item_ids)):
@@ -208,7 +207,7 @@ def deliveries():
             printing_meters = printing_list[i].strip() if i < len(printing_list) else ""
             printing_meters = float(printing_meters) if printing_meters else takka_total
 
-            # Balance ke liye YE (printing_meters) hi meters_delivered ban raha hai
+            # For balance tracking, printing_meters acts as the total meters delivered
             cur = conn.execute(
                 """INSERT INTO deliveries
                    (inward_item_id, outward_challan_number, meters_delivered, delivery_date)
@@ -223,7 +222,7 @@ def deliveries():
                     (delivery_id, t)
                 )
 
-            # Shortage automatically calculate hota hai, manual nahi
+            # Shortage is handled completely automatically by the system backend
             shortage = round(printing_meters - takka_total, 2)
             if shortage > 0:
                 conn.execute(
@@ -274,7 +273,17 @@ def deliveries():
         party_id = request.form.get("party_id_for_whatsapp")
         return redirect(f"/deliveries/confirm/{outward_challan_number}?party_id={party_id}")
 
-    parties = conn.execute("SELECT id, company_name, phone FROM parties ORDER BY company_name").fetchall()
+    # FIXED: Only fetch companies that match the active dashboard entries (balance > 0)
+    parties = conn.execute("""
+        SELECT DISTINCT p.id, p.company_name, p.phone 
+        FROM parties p
+        JOIN inward_challans ic ON ic.party_id = p.id
+        JOIN inward_items ii ON ii.inward_challan_id = ic.id
+        LEFT JOIN deliveries d ON d.inward_item_id = ii.id
+        GROUP BY ii.id
+        HAVING (ii.meters_given - COALESCE(SUM(d.meters_delivered), 0)) > 0
+        ORDER BY p.company_name
+    """).fetchall()
 
     rows = conn.execute("""
         SELECT ii.id, p.company_name, ii.fabric_name, ii.fabric_width_inches, ii.meters_given,
@@ -333,6 +342,7 @@ def payments():
         conn.close()
         return redirect("/payments")
 
+    # FIXED: Only fetch open deliveries that have actual quantities delivered (meters_delivered > 0)
     open_delivery_rows = conn.execute("""
         SELECT d.id, p.company_name, ii.fabric_name, d.delivery_date,
                COALESCE(SUM(dt.meters), 0) AS takka_total
@@ -342,6 +352,7 @@ def payments():
         JOIN parties p ON ic.party_id = p.id
         LEFT JOIN delivery_takkas dt ON dt.delivery_id = d.id
         WHERE d.id NOT IN (SELECT delivery_id FROM payments)
+          AND d.meters_delivered > 0
         GROUP BY d.id
         ORDER BY d.id DESC
     """).fetchall()
@@ -380,7 +391,6 @@ def payments():
 
     conn.close()
     return render_template("payments.html", open_deliveries=open_deliveries, all_payments=all_payments)
-
 
 @app.route("/payments/pay/<int:payment_id>", methods=["POST"])
 def add_partial_payment(payment_id):
@@ -1272,6 +1282,7 @@ def company_phone():
 def clear_data():
     with open("config.json") as f:
         config = json.load(f)
+        config["admin_password"] = os.environ.get("ADMIN_PASSWORD", "")
 
     if request.method == "POST":
         entered_password = request.form.get("password", "")
@@ -1308,6 +1319,33 @@ def recent_challans():
     rows = conn.execute("SELECT DISTINCT outward_challan_number FROM deliveries ORDER BY id DESC LIMIT 10").fetchall()
     conn.close()
     return {"challans": [r["outward_challan_number"] for r in rows]}
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    # Agar user ne form submit kiya hai
+    if request.method == "POST":
+        password = request.form.get("password")
+        # config.json se password match karein
+        with open("config.json") as f:
+            import json
+            config = json.load(f)
+            config["login_password"] = os.environ.get("LOGIN_PASSWORD", "")
+            
+        if password == config.get("login_password"):
+            session["logged_in"] = True
+            return redirect("/")
+        else:
+            return render_template("login.html", error="Galat password. Kripya dubara try karein.")
+            
+    # Agar sirf page open kiya hai (GET request)
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    # Session data ko clear karne ke liye
+    session.clear() 
+    return render_template("logout.html")
 
 if __name__ == "__main__":
     app.run(debug=True)

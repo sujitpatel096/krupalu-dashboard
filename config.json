@@ -1,0 +1,32 @@
+{
+  "database_path": "data/krupalu_data.db",
+  "gst_options": [0, 5, 12, 18],
+  "default_payment_due_days": 15,
+  "reminder_one_day_before": true,
+  "production_statuses": ["pending", "printing_in_progress", "ready_to_deliver"],
+  "payment_statuses": ["pending", "partial", "paid"],
+  "default_garment_types": [
+    { "name": "Saree", "length_per_piece_m": 5.5 },
+    { "name": "Dupatta", "length_per_piece_m": 1.5 },
+    { "name": "All-over", "length_per_piece_m": null }
+  ],
+  "fabric_damage_stages": ["start", "middle", "end"],
+  "fabric_widths_inches": [28, 30, 32, 34, 35, 36, 40, 42, 46, 48, 50, 52, 56, 58, 60, 62, 70, 72],
+  "fabric_master_list": [
+    "Georgette", "60g Georgette", "Organza", "Chiffon", "Poly Chiffon",
+    "Hi-Multi Chiffon", "Jacquard Chiffon", "Malai Satin", "Japan Satin",
+    "Satin", "Roto Satin", "Silk Satin", "Crepe", "Micro Crepe",
+    "American Crepe", "French Crepe", "Poly-Cambric / PC Cotton",
+    "Linen Touch / Poly-Linen", "Muslin", "Poly-Muslin", "Lycra",
+    "Polyester Spandex", "Scuba", "Moss Crepe", "Poly Silk", "Taffeta",
+    "Poly Shantoon / Upada Silk", "Velvet (Polyester Base)", "Poly Brocade",
+    "Mesh / Net (Polyester)", "Interlock / PC Matte", "Dry-Fit / Nirmal Knit"
+  ],
+  "owner_name": "Sunny Patel",
+  "owner_phone": "7405597333",
+  "whatsapp": {
+    "provider": "meta_cloud_api",
+    "phone_number_id": "",
+    "access_token": ""
+  }
+}
