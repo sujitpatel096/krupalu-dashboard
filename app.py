@@ -14,6 +14,8 @@ app.secret_key = "krupalu-dashboard-secret-key"
 
 @app.route("/")
 def dashboard():
+    if not session.get("logged_in"):
+        return redirect("/login")
     conn = get_db_connection()
 
     period = request.args.get("period", "30")
