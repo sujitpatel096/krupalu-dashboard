@@ -2,3 +2,4 @@ flask
 rapidfuzz
 openpyxl
 xhtml2pdf
+gunicorn
